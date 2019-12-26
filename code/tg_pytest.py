@@ -8,7 +8,7 @@ __license__ = 'Python'
 
 #### CONSTANTS AND SWITCHES ####
 
-TEST_DATA_DIR = "../data/g2-0.99"
+TEST_DATA_DIR = "../data/g2-0.99" #"C:\\Users\\Sam\\Documents\\tg_pytest-master\\data\\g2-0.99" # sme"../data/g2-0.99"
 #TEST_DATA_DIR = "../data/v8-0.97"
 TEST_MASTER_FILE = "test-master.cfg"
 OUTFILE_ENABLED = False     # True or False
@@ -249,23 +249,24 @@ def send_before_after(key, data, delay):
 
     # Send the before/after strings
     if key == "before" and "before" in data:
-        send = [x.encode("utf8") for x in data["before"]]   
+        send = [x.encode("utf8") for x in data["before"]]   #sme: harmonize unicode/ascii
         for line in send:
             print("  before: {0}".format(line))
-            tg.write(line+"\n")
+            tg.write(line+b"\n")
             time.sleep(delay)
 
     if key == "after" and "after" in data:
-        send = [x.encode("utf8") for x in data["after"]]   
+        send = [x.encode("utf8") for x in data["after"]]   #sme: harmonize unicode/ascii
         for line in send:
             print("  after:  {0}".format(line))
-            tg.write(line+"\n")
+            tg.write(line+ b"\n")#sme: added b
             time.sleep(delay)
     
     responses = tg.readlines()       # collect all output before returning
 
 
 def do_before_after(key, data, params):
+    
     """
     key == "before_all", "after_all", "before_each" or "after_each"
     data == dictionary nested under the above key
@@ -283,14 +284,16 @@ def do_before_after(key, data, params):
 
     if key == "after_each" and "after" in data[key]:
         send_before_after("after", data["after_each"], delay)
-        
+    temp="M2\n"    
     if key == "before_all" and "before" in data[key]:
         if "label" in data[key]:
             print   
             print("BEFORE ALL TESTS: {0}".format(data[key]["label"]))
 
-        tg.write("M2\n")            # end any motion and clear any alarms
-        tg.write("{clear:null}\n")  # clear any alarms
+        # failed tg.write( "M2" + b"\n")          # SME added b  end any motion and clear any alarms
+        # failed tg.write(temp.encode())
+        tg.write( "M2\n".encode())# SME added .encode()
+        tg.write("{clear:null}\n".encode()) # SME added .encode() # clear any alarms
         send_before_after("before", data["before_all"], delay)
     
     if key == "after_all" and "after" in data[key]:
@@ -308,9 +311,10 @@ def do_before_after(key, data, params):
 #
 
 def run_delay(string):
-    tag = string.split(' ')[0]
+    temp = string.decode("utf-8")
+    tag = temp.split(' ')[0]
     if (tag == "del"):
-        value = float(string.split(' ')[1])
+        value = float(temp.split(' ')[1])# sme: value = float(string.split(' ')[1])
         print ("  DELAY {0} seconds".format(value))
         time.sleep(value)
         return True
@@ -367,7 +371,7 @@ def run_test(t_data, before_data, after_data, params):
     # WARNING: Won't handle more than 24 lines or 254 chars w/o flow control working (RTS/CTS)
     if "send" not in t_data["t"]:
         print("!!! TEST HAS NO SEND DATA: {0}".format(t_data["t"]["label"]))
-        return
+        return "quit" #sme added areturn param to satisfy parse error
     
     send = [x.encode("utf8") for x in t_data["t"]["send"]]
     first_line = send[0]                # used later in no-response cases    
@@ -375,7 +379,7 @@ def run_test(t_data, before_data, after_data, params):
         if (run_delay(line)):
             continue
         print("  ----> {0}".format(line))
-        tg.write(line+"\n")
+        tg.write(line+ b"\n") #sme: needed to put 'b' in fromt of "\n"
 #        time.sleep(delay)
 
     # Collect the response objects
@@ -392,18 +396,22 @@ def run_test(t_data, before_data, after_data, params):
             r_datae.append(json.loads(line))
         except:
             print("  FAILED: Response doesn't parse: {0}".format(line))
-            fail_hard(t_data, params, line)
-            return
+            print("  SME:WARNING:IGNORING HardFault Processing, damn the torpedos, full speed ahead!\n")
+            # sme: skipping hard fault at peril of worse calamaties:fail_hard(t_data, params, line)
+            #return "quit" #sme: added a return param to satisfy parse error
+            # this had severe results: line ="HARD FAULT SKIPPED\n"
 
-        r_datae[-1]["response"] = line      # Add the response line to the dictionary
+        if len(r_datae) > 0:# sme: I am trying to guard against list index out of range here
+            r_datae[-1]["response"] = line      # Add the response line to the dictionary
 
-        if "r" in r_datae[-1]:
-            r_datae[-1]["r"]["status"] = r_datae[-1]['f'][1]  # extract status code from footer              
-            r_datae[-1]["r"]["count"] = r_datae[-1]['f'][2]   # extract byte/line count from footer
+            if "r" in r_datae[-1]:
+                r_datae[-1]["r"]["status"] = r_datae[-1]['f'][1]  # extract status code from footer              
+                r_datae[-1]["r"]["count"] = r_datae[-1]['f'][2]   # extract byte/line count from footer
 
     if len(r_datae) == 0:
         print ("  FAILED: No response from board: {0}".format(first_line))
-        fail_hard(t_data, params, line)
+        print("  <++++++++++++++++SME:WARNING++++++++++:len(r_datae) == 0:IGNORING HardFault Processing, damn the torpedos, full speed ahead!\n")
+        # sme: skip fail_hard(t_data, params, line)
 
     # Run analyzers on the response object list (unless it's a setup)
     if not setup:
@@ -413,7 +421,8 @@ def run_test(t_data, before_data, after_data, params):
         results += analyze_er(t_data, r_datae, params)
 
         if results < 0:
-            fail_hard(t_data, params, line)
+            print ("<<<<<<<<SME  Skipping over Hard Fault (Damn the torpedos, full speed ahead!!!>>>>>>>>\n")
+            # SME: skip this:fail_hard(t_data, params, line)
 
     # Run "after" strings if this is not a setup "test"
     if not setup:
@@ -436,12 +445,13 @@ def main():
                              # We are open and ready to rock the kitty time
 
     # Open master input file - contains a list of JSON files to process
-    os.chdir(TEST_DATA_DIR)
+    os.chdir(TEST_DATA_DIR)# sme: did not help .encode())
     try:
         master_fd = open(TEST_MASTER_FILE, 'r')
     except:
         print("Failed to open test master FILE: {0}".format(TEST_MASTER_FILE))
-        s.close()
+        # sme: parse error:s.close() 
+        
         sys.exit(1)
 
     # Build a list of input files and test each one for existence
@@ -530,7 +540,7 @@ def main():
         
         for t_data in tests:
             if "t" in t_data:
-                status = run_test(t_data, before_each, after_each, params)
+                status =run_test (t_data, before_each, after_each, params)
                 if (status == "quit"):
                     break;
 

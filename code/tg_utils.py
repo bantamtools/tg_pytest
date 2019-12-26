@@ -40,10 +40,11 @@ class TinyG(object):
         # ENQ style - board must support ENQ protocol, otherwise use old style
         count = 0
         response = { "ack":False }
+        enq_str="\x05" # work-around unicode vs ascii
         while count < 4:
-            self.write("\x05")      # send ENQ
+            self.write(enq_str.encode() )  #"\x05")      # send ENQ
             raw = self.s.readline()
-            print raw
+            print (raw)
             try:
                 response = json.loads(raw)
             except:
