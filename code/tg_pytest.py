@@ -8,7 +8,7 @@ __license__ = 'Python'
 
 #### CONSTANTS AND SWITCHES ####
 
-TEST_DATA_DIR = "../data/g2-0.99" #"C:\\Users\\Sam\\Documents\\tg_pytest-master\\data\\g2-0.99" # sme"../data/g2-0.99"
+TEST_DATA_DIR = "C:\\Users\\Sam\\Documents\\tg_pytest-master\\data\\g2-0.99" # sme"../data/g2-0.99"
 #TEST_DATA_DIR = "../data/v8-0.97"
 TEST_MASTER_FILE = "test-master.cfg"
 OUTFILE_ENABLED = False     # True or False
@@ -396,10 +396,11 @@ def run_test(t_data, before_data, after_data, params):
             r_datae.append(json.loads(line))
         except:
             print("  FAILED: Response doesn't parse: {0}".format(line))
-            print("  SME:WARNING:IGNORING HardFault Processing, damn the torpedos, full speed ahead!\n")
-            # sme: skipping hard fault at peril of worse calamaties:fail_hard(t_data, params, line)
-            #return "quit" #sme: added a return param to satisfy parse error
-            # this had severe results: line ="HARD FAULT SKIPPED\n"
+           # print("  SME:WARNING:IGNORING HardFault Processing, damn the torpedos, full speed ahead!\n")
+            
+            fail_hard(t_data, params, line)# sme: skipping hard fault at peril of worse calamaties:
+            return "quit"                  #sme: added a return param to satisfy parse error
+                                           # this had severe results: line ="HARD FAULT SKIPPED\n"
 
         if len(r_datae) > 0:# sme: I am trying to guard against list index out of range here
             r_datae[-1]["response"] = line      # Add the response line to the dictionary
@@ -410,7 +411,7 @@ def run_test(t_data, before_data, after_data, params):
 
     if len(r_datae) == 0:
         print ("  FAILED: No response from board: {0}".format(first_line))
-        print("  <++++++++++++++++SME:WARNING++++++++++:len(r_datae) == 0:IGNORING HardFault Processing, damn the torpedos, full speed ahead!\n")
+        # print("  <++++++++++++++++SME:WARNING++++++++++:len(r_datae) == 0:IGNORING HardFault Processing, damn the torpedos, full speed ahead!\n")
         # sme: skip fail_hard(t_data, params, line)
 
     # Run analyzers on the response object list (unless it's a setup)
